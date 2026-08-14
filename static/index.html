@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Electricity Demand Forecaster</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --panel: #131c31;
+    --accent: #38bdf8;
+    --accent2: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: radial-gradient(circle at top, #16213e, var(--bg));
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 640px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 1.6rem;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  p.subtitle { color: var(--muted); margin-top: 0; margin-bottom: 24px; font-size: 0.9rem; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.full { grid-column: 1 / -1; }
+  label { font-size: 0.78rem; color: var(--muted); }
+  input, select {
+    background: #0f172a;
+    border: 1px solid #263349;
+    border-radius: 8px;
+    padding: 9px 10px;
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  button {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--accent), #0ea5e9);
+    color: #06121f;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+  button:hover { transform: translateY(-1px); }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  #result {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    padding: 16px;
+    border-radius: 10px;
+    background: #0f172a;
+    border: 1px solid #263349;
+    text-align: center;
+    display: none;
+  }
+  #result.show { display: block; }
+  #result .value { font-size: 1.8rem; font-weight: 700; color: var(--accent2); }
+  #result .label { color: var(--muted); font-size: 0.8rem; margin-top: 4px; }
+  #error {
+    grid-column: 1 / -1;
+    color: #f87171;
+    font-size: 0.85rem;
+    display: none;
+  }
+  footer { margin-top: 18px; color: var(--muted); font-size: 0.72rem; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Electricity Demand Estimate</h1>
+    <!-- <p class="subtitle">Electricity demand forecaster — Victoria, Australia (Random Forest model)</p> -->
+    <form id="predict-form">
+      <div class="field">
+        <label>Min Temperature (°C)</label>
+        <input type="number" step="0.1" id="min_temperature" value="15.0" required />
+      </div>
+      <div class="field">
+        <label>Max Temperature (°C)</label>
+        <input type="number" step="0.1" id="max_temperature" value="28.0" required />
+      </div>
+      <div class="field">
+        <label>Solar Exposure (MJ/m²)</label>
+        <input type="number" step="0.1" id="solar_exposure" value="20.0" required />
+      </div>
+      <div class="field">
+        <label>Rainfall (mm)</label>
+        <input type="number" step="0.1" id="rainfall" value="0.0" required />
+      </div>
+      <div class="field">
+        <label>Month</label>
+        <select id="month">
+          <option value="1">January</option><option value="2">February</option>
+          <option value="3">March</option><option value="4">April</option>
+          <option value="5">May</option><option value="6" selected>June</option>
+          <option value="7">July</option><option value="8">August</option>
+          <option value="9">September</option><option value="10">October</option>
+          <option value="11">November</option><option value="12">December</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Day of Week</label>
+        <select id="day_of_week">
+          <option value="0">Monday</option><option value="1">Tuesday</option>
+          <option value="2" selected>Wednesday</option><option value="3">Thursday</option>
+          <option value="4">Friday</option><option value="5">Saturday</option>
+          <option value="6">Sunday</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>School Day?</label>
+        <select id="school_day">
+          <option value="1">Yes</option><option value="0">No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Public Holiday?</label>
+        <select id="holiday">
+          <option value="0" selected>No</option><option value="1">Yes</option>
+        </select>
+      </div>
+
+      <button type="submit" id="submit-btn">Predict Demand</button>
+      <div id="error"></div>
+      <div id="result">
+        <div class="value" id="result-value">—</div>
+        <div class="label">Predicted daily demand (MW)</div>
+      </div>
+    </form>
+    <footer>VoltCast API · FastAPI + scikit-learn · trained on 2015–2020 daily data</footer>
+  </div>
+
+<script>
+const form = document.getElementById('predict-form');
+const btn = document.getElementById('submit-btn');
+const result = document.getElementById('result');
+const resultValue = document.getElementById('result-value');
+const errorBox = document.getElementById('error');
+
+// Same-origin by default; works whether the frontend is served by the API
+// itself or from a different host (CORS is open on the API).
+const API_BASE = window.location.origin;
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorBox.style.display = 'none';
+  result.classList.remove('show');
+  btn.disabled = true;
+  btn.textContent = 'Predicting...';
+
+  const dow = parseInt(document.getElementById('day_of_week').value, 10);
+  const payload = {
+    min_temperature: parseFloat(document.getElementById('min_temperature').value),
+    max_temperature: parseFloat(document.getElementById('max_temperature').value),
+    solar_exposure: parseFloat(document.getElementById('solar_exposure').value),
+    rainfall: parseFloat(document.getElementById('rainfall').value),
+    school_day: parseInt(document.getElementById('school_day').value, 10),
+    holiday: parseInt(document.getElementById('holiday').value, 10),
+    month: parseInt(document.getElementById('month').value, 10),
+    day_of_week: dow,
+    is_weekend: (dow === 5 || dow === 6) ? 1 : 0,
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Server responded ${res.status}`);
+    const data = await res.json();
+    resultValue.textContent = data.predicted_demand.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' MW';
+    result.classList.add('show');
+  } catch (err) {
+    errorBox.textContent = 'Prediction failed: ' + err.message;
+    errorBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Predict Demand';
+  }
+});
+</script>
+</body>
+</html>

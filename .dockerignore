@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.log
+.git/
+.gitignore
+data/
+notebook/
+img/
+*.ipynb
+README.md

@@ -1,0 +1,15 @@
+{
+  "feature_order": [
+    "min_temperature",
+    "max_temperature",
+    "solar_exposure",
+    "rainfall",
+    "school_day",
+    "holiday",
+    "month",
+    "day_of_week",
+    "is_weekend"
+  ],
+  "model_type": "RandomForestRegressor",
+  "target": "demand"
+}
